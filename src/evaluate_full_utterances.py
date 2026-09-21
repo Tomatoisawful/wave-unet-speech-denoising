@@ -1,4 +1,4 @@
-"""使用 Edinburgh 纯净 WAV 对已保存的完整语音去噪结果进行评估。"""
+"""使用配对的纯净 WAV 对已保存的完整语音去噪结果进行评估。"""
 
 import argparse
 import csv
@@ -43,17 +43,17 @@ def _score(clean: np.ndarray, noisy: np.ndarray, pred: np.ndarray) -> dict[str, 
     }
 
 
-def main(outputs_dir: str, report_path: str) -> None:
-    noisy_paths = sorted(glob.glob(os.path.join(config.EDINBURGH_NOISY_TEST_DIR, "*.wav")))
+def main(outputs_dir: str, report_path: str, noisy_dir: str, clean_dir: str) -> None:
+    noisy_paths = sorted(glob.glob(os.path.join(noisy_dir, "*.wav")))
     if not noisy_paths:
-        raise RuntimeError(f"No noisy WAV files in {config.EDINBURGH_NOISY_TEST_DIR}")
+        raise RuntimeError(f"No noisy WAV files in {noisy_dir}")
 
     grouped = {name: {metric: [] for metric in METRICS} for name in ("low", "mid", "high", "all")}
     rows: list[dict[str, float | str]] = []
 
     for index, noisy_path in enumerate(noisy_paths, 1):
         stem = os.path.splitext(os.path.basename(noisy_path))[0]
-        clean_path = os.path.join(config.EDINBURGH_CLEAN_TEST_DIR, f"{stem}.wav")
+        clean_path = os.path.join(clean_dir, f"{stem}.wav")
         pred_path = os.path.join(outputs_dir, f"{stem}_denoised.wav")
         if not os.path.exists(clean_path) or not os.path.exists(pred_path):
             raise RuntimeError(f"Missing clean or denoised pair for {stem}")
@@ -102,8 +102,16 @@ def main(outputs_dir: str, report_path: str) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="评估 824 条完整语音的去噪结果")
+    parser = argparse.ArgumentParser(description="评估完整语音的去噪结果")
     parser.add_argument("--outputs-dir", default=DEFAULT_OUTPUTS_DIR)
     parser.add_argument("--report", default=DEFAULT_REPORT_PATH)
+    parser.add_argument(
+        "--noisy-dir", default=config.EDINBURGH_NOISY_TEST_DIR,
+        help="完整带噪参考 WAV 目录",
+    )
+    parser.add_argument(
+        "--clean-dir", default=config.EDINBURGH_CLEAN_TEST_DIR,
+        help="对应完整纯净参考 WAV 目录",
+    )
     args = parser.parse_args()
-    main(args.outputs_dir, args.report)
+    main(args.outputs_dir, args.report, args.noisy_dir, args.clean_dir)

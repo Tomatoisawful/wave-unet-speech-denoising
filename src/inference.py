@@ -172,6 +172,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="为单个 WAV 或一批随机文件去噪")
     parser.add_argument("--input",  required=False, help="带噪输入 WAV 的路径")
     parser.add_argument(
+        "--input-dir", required=False,
+        help="完整语音批量输入目录；指定后按文件名顺序处理目录内 WAV",
+    )
+    parser.add_argument(
         "--output", required=False,
         help="去噪输出 WAV 的路径（默认：outputs/<输入文件名>）",
     )
@@ -190,25 +194,28 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--batch", type=int, default=0,
-        help="从完整测试 WAV 中随机处理 N 条文件，而非处理单个 WAV",
+        help="批量模式最多处理 N 条完整 WAV；设为 0 且指定 --input-dir 时处理全部",
     )
     args = parser.parse_args()
 
-    if args.batch > 0:
-        # 批量模式：从所选测试集随机选取 N 条带噪 WAV
+    if args.input_dir or args.batch > 0:
+        # 批量模式：处理指定目录，或从默认测试集随机抽取 N 条带噪 WAV
         import glob, random
-        wav_dir = (
+        wav_dir = args.input_dir or (
             config.EDINBURGH_NOISY_TEST_DIR
             if config.DATASET.lower() == "edinburgh"
             else config.DEV_NOISY_DIR
         )
-        wav_files = glob.glob(os.path.join(wav_dir, "*.wav"))
+        wav_files = sorted(glob.glob(os.path.join(wav_dir, "*.wav")))
         if not wav_files:
             raise RuntimeError(f"No WAV files found in {wav_dir}")
 
-        random.seed(None)   # 每次运行均使用新的随机种子
-        chosen = random.sample(wav_files, min(args.batch, len(wav_files)))
-        print(f"[inference] 批量模式：正在处理 {len(chosen)} 条带噪测试语音")
+        if args.input_dir:
+            chosen = wav_files[:args.batch] if args.batch > 0 else wav_files
+        else:
+            random.seed(None)   # 每次运行均使用新的随机种子
+            chosen = random.sample(wav_files, min(args.batch, len(wav_files)))
+        print(f"[inference] 批量模式：正在处理 {len(chosen)} 条完整带噪测试语音")
 
         # 仅加载一次模型，供全部文件复用
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

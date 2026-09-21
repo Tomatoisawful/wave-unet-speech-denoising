@@ -1,0 +1,29 @@
+[full-eval] Processed 50/824
+[full-eval] Processed 100/824
+[full-eval] Processed 150/824
+[full-eval] Processed 200/824
+[full-eval] Processed 250/824
+[full-eval] Processed 300/824
+[full-eval] Processed 350/824
+[full-eval] Processed 400/824
+[full-eval] Processed 450/824
+[full-eval] Processed 500/824
+[full-eval] Processed 550/824
+[full-eval] Processed 600/824
+[full-eval] Processed 650/824
+[full-eval] Processed 700/824
+[full-eval] Processed 750/824
+[full-eval] Processed 800/824
+[full-eval] Processed 824/824
+=========================================================================================================
+Full-utterance evaluation of saved inference outputs
+=========================================================================================================
+Group       N   SNR-in  SNR-out  SSNR-in  SSNR-out  PESQ-NB  PESQ-WB    STOI   SI-SDR
+=========================================================================================================
+low       218     1.15    13.77    -3.45      6.25    2.881    2.039   0.903    15.53
+mid       415     8.78    17.61     1.44      8.85    3.426    2.566   0.943    18.09
+high      191    16.07    19.10     7.37     10.27    3.854    3.063   0.964    19.31
+all       824     8.45    16.94     1.52      8.49    3.381    2.542   0.937    17.70
+=========================================================================================================
+Per-file CSV: D:\人工智能算法综合课程设计\audio-denoising-main\logs\evaluation_full_utterances.csv
+Evaluation uses saved inference outputs, including inference post-processing.

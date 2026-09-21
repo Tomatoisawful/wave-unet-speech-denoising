@@ -188,6 +188,14 @@ if __name__ == "__main__":
         help="应用带通滤波和响度匹配（默认启用）。",
     )
     parser.add_argument(
+        "--plots", action=argparse.BooleanOptionalAction, default=True,
+        help="批量模式保存每条语音的频谱对比图（默认启用）。",
+    )
+    parser.add_argument(
+        "--save-noisy", action=argparse.BooleanOptionalAction, default=True,
+        help="批量模式将输入带噪 WAV 复制到输出目录（默认启用）。",
+    )
+    parser.add_argument(
         "--checkpoint", required=False,
         default=os.path.join(config.CHECKPOINT_DIR, "best_wave_model.pt"),
         help="模型权重路径",
@@ -239,8 +247,10 @@ if __name__ == "__main__":
             noisy_out = os.path.join(args.output_dir, f"{stem}_noisy.wav")
 
             utils.save_audio(clean_wav, out_wav)
-            utils.save_audio(noisy_wav, noisy_out)
-            plot_spectrograms(noisy_wav, clean_wav, out_wav)
+            if args.save_noisy:
+                utils.save_audio(noisy_wav, noisy_out)
+            if args.plots:
+                plot_spectrograms(noisy_wav, clean_wav, out_wav)
             print(f"  [{i}/{len(chosen)}] {stem}")
 
         print(f"[inference] Done. Results in {args.output_dir}")

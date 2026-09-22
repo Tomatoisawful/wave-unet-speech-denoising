@@ -1,204 +1,306 @@
-# Wave-U-Net 语音去噪实验
+# Wave-U-Net + BiLSTM + 自注意力语音去噪
 
-本项目实现端到端波形语音去噪模型：**Wave-U-Net + BiLSTM + 多头自注意力**。模型以带噪语音波形为输入，直接输出去噪波形；训练使用 Edinburgh Noisy Speech Database（VoiceBank-DEMAND），最终测试以 **824 条完整原始测试语音** 为单位进行，而非对测试语音做片段级指标统计。
+本项目实现一个端到端时域语音增强系统。模型以 16 kHz 单声道带噪波形为输入，使用 Wave-U-Net 提取多尺度特征，在瓶颈层加入双向 LSTM 和多头自注意力，最终直接输出完整去噪波形。
 
-## 1. 算法结构
+项目在 Edinburgh Noisy Speech Database（VoiceBank-DEMAND）上训练，并提供两类完整语音评估：
+
+- 官方 VoiceBank-DEMAND 824 条测试语音，用于标准测试和传统算法对比。
+- 自建全量 VCTK+DEMAND 31,408 条测试语音，用于未见说话人和更强噪声条件下的跨数据集泛化测试。
+
+仓库包含源码、最佳模型、逐文件评估 CSV、汇总日志和结果图；不包含原始数据集、预处理缓存及批量去噪 WAV。
+
+## 1. 主要特点
+
+- 直接处理原始波形，不依赖频谱掩码重建。
+- 五层一维 Wave-U-Net 编码器和解码器。
+- 两层 BiLSTM 建模双向长时依赖。
+- 八头自注意力建模全局语音关系。
+- SI-SDR 与多分辨率 STFT 联合损失。
+- 支持任意长度完整语音的窗口化、重叠相加推理。
+- 默认启用 80–7500 Hz 带通滤波和峰值响度匹配后处理。
+- 支持 SNR、SSNR、PESQ-NB、PESQ-WB、STOI 和 SI-SDR 评估。
+- 提供原始带噪、谱减法和维纳滤波基线。
+
+## 2. 模型结构
 
 ```text
-带噪单声道波形（16 kHz）
+带噪波形 (B, 1, T)
         │
         ▼
-5 层 Wave-U-Net 编码器：一维卷积 + 下采样
-通道数：1 → 32 → 64 → 128 → 256 → 512
+五层 Wave-U-Net 编码器
+1 → 32 → 64 → 128 → 256 → 512
+每层：Conv1d(stride=2) + BN + PReLU + Conv1d + BN + PReLU
         │
         ▼
-瓶颈层：2 层 BiLSTM（双向各 256 维）
+两层双向 LSTM
+每个方向隐藏维度 256，输出通道 512
         │
         ▼
-8 头多头自注意力 + 前馈网络
+八头多头自注意力 + 前馈网络 + 残差连接
         │
         ▼
-5 层 Wave-U-Net 解码器：线性插值上采样 + 跳跃连接
+五层 Wave-U-Net 解码器
+线性插值上采样 + 编码器跳跃连接 + 一维卷积
         │
         ▼
-一维卷积预测残差波形
+预测残差波形
         │
         ▼
-去噪结果 = 带噪输入 + 预测残差
+去噪波形 = 带噪输入 + 预测残差
 ```
 
-Wave-U-Net 的跳跃连接保留不同时间尺度的局部细节；BiLSTM 建模双向长程时序关系；自注意力进一步学习语音帧之间的全局依赖。模型参数量约为 **17.9 M**。
+模型参数量为 **17,914,257（约 17.9 M）**。跳跃连接保留局部波形细节，BiLSTM 提供双向时序上下文，自注意力补充全局依赖。
 
-### 损失函数
-
-训练目标为：
+### 2.1 损失函数
 
 ```text
-L = -SI-SDR + 0.1 × 多分辨率 STFT 损失
+L = -SI-SDR + 0.1 × Multi-Resolution STFT Loss
 ```
 
-- `SI-SDR`：约束整体时域波形保真度；训练时最小化其相反数。
-- 多分辨率 STFT 损失：在 `(256, 64, 256)`、`(512, 128, 512)`、`(1024, 256, 1024)` 三种时频分辨率下约束频谱差异。
-
-## 2. 数据集与目录
-
-训练和正式评估使用 Edinburgh Noisy Speech Database。解压后的目录应为：
+多分辨率 STFT 配置为：
 
 ```text
-data/
-└── edinburgh/
-    ├── clean_trainset_28spk_wav/
-    ├── noisy_trainset_28spk_wav/
-    ├── clean_testset_wav/
-    └── noisy_testset_wav/
+(n_fft=256,  hop=64,  win=256)
+(n_fft=512,  hop=128, win=512)
+(n_fft=1024, hop=256, win=1024)
 ```
 
-项目按说话人将 11,572 条训练配对文件划分为训练集和验证集，避免同一说话人同时出现于两者。训练阶段会将训练/验证数据转换为 2 秒、50% 重叠的波形缓存；**这仅用于训练，不用于正式测试指标**。
+SI-SDR 约束时域信号保真度，多分辨率 STFT 损失同时约束不同时间和频率尺度上的频谱结构。
 
-正式测试直接使用 `clean_testset_wav` 和 `noisy_testset_wav` 中的 824 条完整语音。
+### 2.2 完整语音推理与后处理
 
-## 3. 环境安装（Windows + Miniconda）
+完整语音不会作为一个超长张量一次送入显存。程序在内部使用 2 秒窗口和 50% 重叠进行推理，再通过加权重叠相加重建完整波形。窗口只用于控制显存，不用于分段统计测试指标。
 
-本项目推荐使用现有的 `mamba` Conda 环境。以下命令每行单独执行：
+默认后处理包括：
 
-```powershell
-conda activate mamba
-cd "D:\人工智能算法综合课程设计\audio-denoising-main"
+1. 二阶 80 Hz 高通滤波；
+2. 二阶 7500 Hz 低通滤波；
+3. 按输入语音峰值进行输出响度匹配。
 
-# 先安装与 CUDA 版本匹配的 PyTorch；示例为 CUDA 12.4
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
-pip install -r requirements.txt
-```
+正式结果和传统基线均使用后处理后的完整语音。
 
-检查 GPU 是否可用：
+## 3. 数据集
 
-```powershell
-python -c "import torch; print(torch.__version__); print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
-```
+### 3.1 VoiceBank-DEMAND（训练与标准测试）
 
-若 PowerShell 中的 `python` 未指向 mamba 环境，可固定使用：
-
-```powershell
-$mambaPy = "D:\miniconda3\envs\mamba\python.exe"
-& $mambaPy -c "import torch; print(torch.cuda.is_available())"
-```
-
-## 4. 训练流程
-
-### 4.1 预处理训练与验证数据
-
-```powershell
-$mambaPy = "D:\miniconda3\envs\mamba\python.exe"
-& $mambaPy .\src\preprocess.py --dataset edinburgh
-```
-
-缓存保存到：
+目录结构：
 
 ```text
-data/processed_wave/segments/train/
-data/processed_wave/segments/val/
+data/edinburgh/
+├── clean_trainset_28spk_wav/
+├── noisy_trainset_28spk_wav/
+├── clean_testset_wav/
+└── noisy_testset_wav/
 ```
 
-不会生成测试集的 2 秒缓存。
+训练部分按说话人划分，防止相同说话人同时进入训练集和验证集：
 
-### 4.2 配置训练参数
+| 划分 | 原始完整语音 | 2 秒训练缓存 |
+|---|---:|---:|
+| 训练集 | 9,075 | 24,720 |
+| 验证集 | 2,497 | 7,648 |
+| 官方测试集 | 824 | 不生成片段缓存 |
 
-在 `src/config.py` 中主要修改：
+测试指标始终在 824 条完整语音上计算。
 
-```python
-BATCH_SIZE = 8          # 根据显存逐步增大；显存不足则减小
-MAX_EPOCHS = 100
-MAX_TRAIN_FILES = None  # None 表示使用全部训练片段
-MAX_VAL_FILES = None    # None 表示使用全部验证片段
-```
+### 3.2 自建全量 VCTK+DEMAND 测试集
 
-### 4.3 开始训练
+跨数据集测试采用 VCTK 0.92 的 `mic1` 纯净录音，排除已在 Edinburgh 训练集和测试集中出现的说话人，再与 DEMAND 噪声混合。目标 SNR 循环采用 `-5、0、5、10、15 dB`，随机种子为 42。
 
-前台训练：
+该测试集共 31,408 对完整语音。它不是论文中统一使用的官方划分，应被描述为“自建 VCTK+DEMAND 跨数据集泛化测试集”。
 
-```powershell
-& $mambaPy -u .\src\train.py
-```
+## 4. 实验结果
 
-训练完成后最佳权重保存为：
+### 4.1 VoiceBank-DEMAND 官方 824 条完整语音
 
-```text
-checkpoints/best_wave_model.pt
-```
-
-训练以验证集 SI-SDR 作为最佳权重选择依据；若连续 15 轮未提升则早停。
-
-## 5. 完整语音推理与正式评估
-
-### 5.1 对 824 条完整测试语音生成去噪结果
-
-```powershell
-& $mambaPy -u .\src\inference.py --batch 824 --checkpoint .\checkpoints\best_wave_model.pt
-```
-
-输出目录：
-
-```text
-outputs/full_utterances/
-├── *_denoised.wav
-├── *_noisy.wav
-└── *_denoised_spectrogram.png
-```
-
-任意长度语音在推理内部会采用 2 秒窗口和重叠相加重建，以控制显存占用；最终保存和评估的对象始终是完整 WAV。默认后处理已启用，包括 80–7500 Hz 带通滤波和与输入匹配的峰值响度归一化。
-
-### 5.2 计算客观指标
-
-```powershell
-& $mambaPy -u .\src\evaluate_full_utterances.py
-```
-
-结果保存为：
-
-```text
-logs/full_utterances/evaluation_full_utterances.log
-logs/full_utterances/evaluation_full_utterances.csv
-```
-
-评估指标：
-
-- SNR：全局信噪比。
-- SSNR：分段信噪比，对有效 20 ms 语音帧取平均。
-- PESQ-NB：8 kHz 窄带感知语音质量。
-- PESQ-WB：16 kHz 宽带感知语音质量。
-- STOI：短时客观可懂度，范围为 0–1，越高越好。
-- SI-SDR：尺度不变信号失真比，单位 dB，越高越好。
-
-## 6. 传统基线对比
-
-项目提供三种完整语音基线：原始带噪语音、谱减法和维纳滤波。谱减法与维纳滤波使用与模型相同的后处理，确保系统级比较公平。
-
-```powershell
-& $mambaPy -u .\src\baseline.py --report .\logs\full_utterances\baselines_with_postprocess.log
-```
-
-对应 CSV 会写入同一目录。
-
-## 7. 当前完整测试结果
-
-已训练的 `best_wave_model.pt` 在 Edinburgh 824 条完整测试语音上的平均指标如下：
-
-| 方法 | SNR-out | SSNR-out | PESQ-NB | PESQ-WB | STOI | SI-SDR |
+| 方法 | SNR-out/dB ↑ | SSNR-out/dB ↑ | PESQ-NB ↑ | PESQ-WB ↑ | STOI ↑ | SI-SDR/dB ↑ |
 |---|---:|---:|---:|---:|---:|---:|
 | 原始带噪语音 | 8.45 | 1.52 | 2.945 | 1.967 | 0.921 | 8.45 |
 | 谱减法 | 15.49 | 6.48 | 3.105 | 2.308 | 0.921 | 16.00 |
 | 维纳滤波 | 15.60 | 6.68 | 3.131 | 2.328 | 0.920 | 16.11 |
 | **Wave-U-Net + BiLSTM + Attention** | **16.94** | **8.49** | **3.381** | **2.542** | **0.937** | **17.70** |
 
-完整结果图位于：
+相对原始带噪语音，本模型带来：SNR `+8.49 dB`、SSNR `+6.97 dB`、PESQ-WB `+0.575`、STOI `+0.016`、SI-SDR `+9.25 dB`。
 
-```text
-result/38ba233466f457f33deeb32cafd799f3.png
-result/a2372aacf60e0628915c69c3b507433b.png
-result/full_utterance_example/
+![824条完整语音模型评估结果](result/38ba233466f457f33deeb32cafd799f3.png)
+
+![824条完整语音传统基线结果](result/a2372aacf60e0628915c69c3b507433b.png)
+
+详细结果：
+
+- `logs/full_utterances/evaluation_full_utterances.log`
+- `logs/full_utterances/evaluation_full_utterances.csv`
+- `logs/full_utterances/baselines_with_postprocess.log`
+- `logs/full_utterances/baselines_with_postprocess.csv`
+
+### 4.2 全量 VCTK+DEMAND 31,408 条完整语音
+
+| SNR组 | 数量 | SNR-in | SNR-out | SSNR-in | SSNR-out | PESQ-NB | PESQ-WB | STOI | SI-SDR |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| low | 15,819 | -0.96 | 10.69 | -5.03 | 3.87 | 2.656 | 1.809 | 0.738 | 12.55 |
+| mid | 12,865 | 10.21 | 16.23 | 1.41 | 7.21 | 3.428 | 2.518 | 0.802 | 16.46 |
+| high | 2,724 | 15.00 | 17.72 | 4.97 | 8.24 | 3.698 | 2.834 | 0.832 | 17.81 |
+| **全部** | **31,408** | **5.00** | **13.57** | **-1.53** | **5.62** | **3.062** | **2.189** | **0.772** | **14.61** |
+
+全量测试中，SNR 提升 8.57 dB、SSNR 提升 7.15 dB。结果低于官方 824 条测试，主要因为该集合包含 -5 dB 强噪声、更多未见说话人和不同的噪声组合，体现了明显的跨数据集分布差异。
+
+详细结果位于 `logs/vctk_demand_all/`。
+
+### 4.3 VCTK+DEMAND 824 条抽样测试
+
+| 数量 | SNR-in | SNR-out | SSNR-in | SSNR-out | PESQ-NB | PESQ-WB | STOI | SI-SDR |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 824 | 4.99 | 13.46 | -1.51 | 5.56 | 3.056 | 2.188 | 0.773 | 14.52 |
+
+详细结果位于 `logs/vctk_demand/`。
+
+### 4.4 结果解释与限制
+
+- 模型在官方测试集上全面超过带噪输入、谱减法和维纳滤波基线。
+- 在自建 VCTK+DEMAND 上仍显著提升 SNR 和 SSNR，说明模型具备跨说话人泛化能力。
+- 全量 VCTK 测试不是公开统一划分，不能与使用官方 824 条测试集的论文进行严格排名。
+- PESQ、STOI 等指标会受到采样率、静音处理、后处理及具体指标实现影响。
+- 当前训练目标主要优化 SI-SDR 和频谱重建，没有直接优化 PESQ，因此感知质量仍有提升空间。
+
+## 5. 环境安装
+
+推荐使用 Python 3.10 和独立 Conda 环境。PyTorch 需要根据本机 CUDA 版本单独安装。
+
+### Windows PowerShell
+
+```powershell
+conda activate mamba
+cd "D:\人工智能算法综合课程设计\audio-denoising-main"
+
+# 示例：CUDA 12.4
+python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
+python -m pip install -r requirements.txt
+
+python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU')"
 ```
 
-## 8. 单条外部音频去噪
+如果 PowerShell 中的 `python` 没有指向正确环境：
+
+```powershell
+$mambaPy = "D:\miniconda3\envs\mamba\python.exe"
+& $mambaPy -m pip install -r requirements.txt
+```
+
+### Linux/云服务器
+
+```bash
+cd /root/autodl-tmp/audio-denoising-main
+python -m pip install -r requirements.txt
+python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+```
+
+## 6. 训练流程
+
+### 6.1 预处理
+
+```powershell
+$mambaPy = "D:\miniconda3\envs\mamba\python.exe"
+& $mambaPy -u .\src\preprocess.py --dataset edinburgh
+```
+
+缓存保存到 `data/processed_wave/segments/train/` 和 `data/processed_wave/segments/val/`，不会生成测试集的 2 秒缓存。
+
+### 6.2 训练参数
+
+主要参数位于 `src/config.py`：
+
+```python
+BATCH_SIZE = 8          # 根据显存调整
+MAX_EPOCHS = 100
+LEARNING_RATE = 1e-3
+WEIGHT_DECAY = 1e-4
+MAX_TRAIN_FILES = None
+MAX_VAL_FILES = None
+EARLY_STOP_PATIENCE = 15
+```
+
+本仓库提供的最佳模型实际在 RTX 4090D 上以 `batch_size=64`、不开启 AMP 完成训练。最佳权重来自第 95 轮，验证集 SI-SDR 为 **14.38 dB**。
+
+### 6.3 开始训练
+
+```powershell
+& $mambaPy -u .\src\train.py
+```
+
+最佳权重自动保存为 `checkpoints/best_wave_model.pt`。训练以验证集 SI-SDR 选择最佳权重，连续 15 轮无提升时早停。
+
+## 7. 官方824条完整语音测试
+
+### 7.1 推理
+
+```powershell
+$mambaPy = "D:\miniconda3\envs\mamba\python.exe"
+& $mambaPy -u .\src\inference.py `
+  --batch 824 `
+  --checkpoint .\checkpoints\best_wave_model.pt `
+  --output-dir .\outputs\full_utterances
+```
+
+### 7.2 评估
+
+```powershell
+& $mambaPy -u .\src\evaluate_full_utterances.py `
+  --outputs-dir .\outputs\full_utterances `
+  --noisy-dir .\data\edinburgh\noisy_testset_wav `
+  --clean-dir .\data\edinburgh\clean_testset_wav `
+  --report .\logs\full_utterances\evaluation_full_utterances.log
+```
+
+## 8. 全量VCTK+DEMAND测试
+
+以下命令假设 VCTK 已解压到 `data/vctk/extracted/`，DEMAND 已解压到 `data/demand/`。
+
+### 8.1 生成31,408条配对语音
+
+```powershell
+& $mambaPy -u .\src\prepare_vctk_demand_test.py `
+  --vctk-root .\data\vctk\extracted `
+  --demand-root .\data\demand `
+  --output-root .\data\vctk_demand_test `
+  --count 31408 `
+  --seed 42
+```
+
+### 8.2 推理
+
+关闭逐文件频谱图和输入副本可显著减少磁盘占用。`--resume` 会跳过已经完成的文件。
+
+```powershell
+& $mambaPy -u .\src\inference.py `
+  --input-dir .\data\vctk_demand_test\noisy `
+  --batch 0 `
+  --output-dir .\outputs\vctk_demand_all `
+  --checkpoint .\checkpoints\best_wave_model.pt `
+  --no-plots `
+  --no-save-noisy `
+  --resume
+```
+
+### 8.3 评估
+
+```powershell
+& $mambaPy -u .\src\evaluate_full_utterances.py `
+  --outputs-dir .\outputs\vctk_demand_all `
+  --noisy-dir .\data\vctk_demand_test\noisy `
+  --clean-dir .\data\vctk_demand_test\clean `
+  --report .\logs\vctk_demand_all\evaluation.log
+```
+
+## 9. 传统基线
+
+```powershell
+& $mambaPy -u .\src\baseline.py `
+  --report .\logs\full_utterances\baselines_with_postprocess.log
+```
+
+谱减法和维纳滤波会使用与神经网络相同的推理后处理，保证系统级比较方式一致。
+
+## 10. 单条语音去噪
 
 ```powershell
 & $mambaPy -u .\src\inference.py `
@@ -207,44 +309,65 @@ result/full_utterance_example/
   --checkpoint .\checkpoints\best_wave_model.pt
 ```
 
-命令会保存去噪 WAV 和对应频谱对比图。单条外部音频没有纯净参考时，只能试听和观察频谱，无法计算 PESQ、STOI、SNR 等有参考指标。
+没有纯净参考语音时，可以保存、试听和观察频谱，但不能可靠计算 PESQ、STOI、SNR、SSNR 或 SI-SDR。
 
-## 9. VCTK 跨数据集测试
-
-`data/vctk/` 中的 VCTK 是**纯净语音**数据集，本身不包含带噪配对语音，不能直接进行去噪指标评估。若需跨数据集测试：
-
-1. 选取 VCTK 纯净 WAV；
-2. 选取独立噪声集，例如 DEMAND 或 NoiseX-92；
-3. 按给定 SNR 混合生成带噪 VCTK；
-4. 用当前模型对完整带噪 WAV 推理；
-5. 用原始 VCTK WAV 作为参考，计算同一套指标。
-
-该流程不需要重新训练，反映模型的跨数据集泛化能力；若目标是提升 VCTK 上的效果，则应将 VCTK 参与训练或微调。
-
-## 10. 主要文件
+## 11. 主要文件
 
 | 文件 | 作用 |
 |---|---|
-| `src/wave_model.py` | Wave-U-Net、BiLSTM 与自注意力模型定义 |
-| `src/losses.py` | SI-SDR 与多分辨率 STFT 组合损失 |
-| `src/preprocess.py` | Edinburgh 训练/验证数据预处理 |
-| `src/train.py` | 训练、验证、早停与权重保存 |
-| `src/inference.py` | 单条或完整测试集去噪、后处理与频谱图生成 |
-| `src/evaluate_full_utterances.py` | 824 条完整测试语音的指标评估 |
-| `src/baseline.py` | 带噪、谱减和维纳滤波基线对比 |
-| `src/config.py` | 数据路径与超参数配置 |
+| `src/wave_model.py` | Wave-U-Net、BiLSTM 和自注意力模型 |
+| `src/losses.py` | SI-SDR 与多分辨率 STFT 联合损失 |
+| `src/preprocess.py` | Edinburgh训练/验证数据预处理 |
+| `src/dataset.py` | 原始数据加载与动态混合工具 |
+| `src/train.py` | 训练、验证、学习率调度、早停与权重保存 |
+| `src/inference.py` | 单条及批量完整语音推理与后处理 |
+| `src/evaluate.py` | 指标实现和窗口化重叠相加推理 |
+| `src/evaluate_full_utterances.py` | 已保存完整语音结果的统一评估 |
+| `src/baseline.py` | 带噪、谱减和维纳滤波基线 |
+| `src/prepare_vctk_demand_test.py` | 生成自建VCTK+DEMAND配对测试集 |
+| `src/config.py` | 路径、模型和训练超参数 |
 
-## 11. 常见问题
+## 12. 模型文件
 
-**`ModuleNotFoundError: No module named 'torch'`**
+```text
+checkpoints/best_wave_model.pt
+大小：71,753,350 bytes（约 68.4 MiB）
+SHA-256：603D331BB431A71FB1D6E37A224B0590B14B609BDC135105DBF841F03B37CDC1
+```
 
-说明当前 `python` 不在 mamba 环境中。使用 `$mambaPy` 指向 `D:\miniconda3\envs\mamba\python.exe` 后重新运行。
+## 13. 仓库不包含的内容
 
-**`No .pt files found ... segments/train`**
+以下内容已通过 `.gitignore` 排除：
 
-尚未完成训练/验证数据预处理。执行第 4.1 节命令。
+- `data/`：Edinburgh、VCTK、DEMAND及预处理缓存；
+- `outputs/`：批量推理生成的 WAV 和逐语音频谱图；
+- `.venv/`、`venv/`、`env/`：虚拟环境；
+- `wandb/`、Python缓存及临时文件。
 
-**显存不足（CUDA out of memory）**
+克隆仓库后需要自行准备数据集，但可以直接使用仓库中的最佳模型权重。
 
-在 `src/config.py` 中调小 `BATCH_SIZE`，例如从 64 改为 32 或 16。完整语音推理由内部窗口化和重叠相加完成，不需要把整条语音一次送入显存。
+## 14. 常见问题
 
+### `ModuleNotFoundError: No module named 'torch'`
+
+当前命令使用的 Python 不属于已安装 PyTorch 的环境。请执行 `conda activate mamba`，或使用完整解释器路径运行。
+
+### `No .pt files found ... segments/train`
+
+训练缓存尚未生成，请先执行第 6.1 节的预处理命令。
+
+### CUDA显存不足
+
+训练时减小 `BATCH_SIZE`；完整语音推理已经采用窗口化处理，若仍异常可逐条运行并使用 `--resume` 续跑。
+
+### 批量推理中断
+
+保持相同输入和输出目录，重新执行带 `--resume` 的命令。已经存在的 `*_denoised.wav` 会被跳过。
+
+## 15. 参考资料
+
+- CSTR VCTK Corpus: <https://datashare.ed.ac.uk/handle/10283/3443>
+- VoiceBank-DEMAND / Edinburgh Noisy Speech Database: <https://datashare.ed.ac.uk/handle/10283/2791>
+- Wave-U-Net for Speech Enhancement: <https://arxiv.org/abs/1811.11307>
+- PESQ, ITU-T P.862: <https://www.itu.int/rec/T-REC-P.862>
+- STOI: <https://doi.org/10.1109/TASL.2010.2081671>

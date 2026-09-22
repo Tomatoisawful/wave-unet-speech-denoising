@@ -232,5 +232,13 @@ checkpoints/*
 !logs/full_utterances/*.log
 logs/full_utterances/baseline_smoke.*
 
+# 保留 VCTK+DEMAND 跨数据集评估汇总和逐文件指标，不上传语音输出
+!logs/vctk_demand/
+!logs/vctk_demand/evaluation.log
+!logs/vctk_demand/evaluation.csv
+!logs/vctk_demand_all/
+!logs/vctk_demand_all/evaluation.log
+!logs/vctk_demand_all/evaluation.csv
+
 # Word 渲染检查产生的临时文件
 _qa_report/

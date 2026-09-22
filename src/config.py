@@ -1,6 +1,5 @@
 """
 config.py
----------
 语音去噪项目的集中配置文件。
 所有超参数和路径均在此定义；进行实验时通常只需修改本文件。
 """
@@ -21,7 +20,7 @@ DATA_ROOT = os.path.join(os.path.dirname(__file__), "..", "data")
 CLEAN_DIR  = os.path.join(DATA_ROOT, "raw/clean_fullband/mnt/dnsv5/clean")    # 纯净语音 WAV
 NOISE_DIR  = os.path.join(DATA_ROOT, "raw/noise_fullband")                    # 背景噪声 WAV
 
-# DNS 开发测试集（带噪/纯净配对文件；保留兼容配置）
+# DNS 开发测试集
 DEV_NOISY_DIR = os.path.join(DATA_ROOT, "processed", "noisy_testclips")
 DEV_CLEAN_DIR = os.path.join(DATA_ROOT, "processed", "clean_testclips")
 
@@ -38,7 +37,7 @@ EDINBURGH_NOISY_TRAIN_DIR = os.path.join(EDINBURGH_ROOT, "noisy_trainset_28spk_w
 EDINBURGH_CLEAN_TEST_DIR  = os.path.join(EDINBURGH_ROOT, "clean_testset_wav")
 EDINBURGH_NOISY_TEST_DIR  = os.path.join(EDINBURGH_ROOT, "noisy_testset_wav")
 
-# Wave-U-Net 的波形缓存独立存储，避免与旧频谱实验缓存互相覆盖。
+# Wave-U-Net 的波形缓存独立存储
 PROCESSED_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "processed_wave")
 
 # 训练得到的模型权重保存位置
@@ -62,7 +61,7 @@ N_FREQ_BINS = N_FFT // 2 + 1
 
 
 #----------------------------------------------------------------------------------
-# 分段设置（仅用于训练和模型内部的重叠拼接推理）
+# 分段设置（用于训练）
 #----------------------------------------------------------------------------------
 
 SEGMENT_DURATION = 2.0                                   # 每个训练片段的时长（秒）
@@ -106,14 +105,13 @@ MAX_EPOCHS    = 100
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY  = 1e-4
 
-# 预热 + 余弦退火学习率调度
-WARMUP_EPOCHS   = 3     # 较快预热，使模型尽早达到完整学习率
-MIN_LR          = 1e-5  # 避免学习率衰减过低，后期仍可继续学习
+WARMUP_EPOCHS   = 3
+MIN_LR          = 1e-5  # 避免学习率衰减过低
 
-# 早停：验证集 SI-SDR 连续若干轮无提升时停止训练
+# 早停
 EARLY_STOP_PATIENCE = 15
 
-# 数据增强：每个批次随机将 SNR 偏移 ±SNR_AUGMENT_DB
+# 数据增强
 SNR_AUGMENT_DB = 3.0
 
 
@@ -131,9 +129,5 @@ STFT_RESOLUTIONS = [
 ]
 
 
-#----------------------------------------------------------------------------------
-# Weights & Biases 实验跟踪（设为 None 即禁用）
-#----------------------------------------------------------------------------------
-
 WANDB_PROJECT = None
-WANDB_ENTITY  = None                # W&B 用户名；None 表示使用默认值
+WANDB_ENTITY  = None

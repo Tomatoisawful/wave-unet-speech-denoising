@@ -11,6 +11,7 @@ import glob
 import os
 import random
 
+import soundfile as sf
 import torch
 
 import config
@@ -58,6 +59,26 @@ def crop_or_repeat(noise: torch.Tensor, length: int, rng: random.Random) -> torc
     return noise[start:start + length]
 
 
+def load_noise_segment(path: str, length: int, rng: random.Random) -> torch.Tensor:
+    """只读取所需长度的噪声，避免反复载入整段数分钟录音。"""
+    info = sf.info(path)
+    if info.samplerate != config.SAMPLE_RATE or info.frames < length:
+        return crop_or_repeat(utils.load_audio(path), length, rng)
+
+    max_start = info.frames - length
+    start = rng.randint(0, max_start) if max_start > 0 else 0
+    data, _ = sf.read(
+        path,
+        start=start,
+        frames=length,
+        dtype="float32",
+        always_2d=True,
+    )
+    if data.shape[1] > 1:
+        data = data.mean(axis=1, keepdims=True)
+    return torch.from_numpy(data[:, 0].copy())
+
+
 def mix_at_snr(clean: torch.Tensor, noise: torch.Tensor, snr_db: float) -> tuple[torch.Tensor, torch.Tensor]:
     """按目标 SNR 混合，并对纯净参考和混合语音做相同峰值缩放。"""
     eps = 1e-8
@@ -98,7 +119,7 @@ def main(vctk_root: str, demand_root: str, output_root: str, count: int, seed: i
     for index, clean_path in enumerate(selected, 1):
         clean = utils.load_audio(clean_path)
         noise_path = noise_paths[(index - 1) % len(noise_paths)]
-        noise = crop_or_repeat(utils.load_audio(noise_path), clean.numel(), rng)
+        noise = load_noise_segment(noise_path, clean.numel(), rng)
         snr_db = snr_levels[(index - 1) % len(snr_levels)]
         clean_ref, noisy = mix_at_snr(clean, noise, snr_db)
 

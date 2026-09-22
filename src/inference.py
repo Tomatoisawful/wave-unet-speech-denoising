@@ -196,6 +196,10 @@ if __name__ == "__main__":
         help="批量模式将输入带噪 WAV 复制到输出目录（默认启用）。",
     )
     parser.add_argument(
+        "--resume", action="store_true",
+        help="批量模式跳过已经存在的去噪 WAV，用于中断后续跑。",
+    )
+    parser.add_argument(
         "--checkpoint", required=False,
         default=os.path.join(config.CHECKPOINT_DIR, "best_wave_model.pt"),
         help="模型权重路径",
@@ -235,16 +239,21 @@ if __name__ == "__main__":
         os.makedirs(args.output_dir, exist_ok=True)
 
         for i, wav_path in enumerate(chosen, 1):
+            stem      = os.path.splitext(os.path.basename(wav_path))[0]
+            out_wav   = os.path.join(args.output_dir, f"{stem}_denoised.wav")
+            noisy_out = os.path.join(args.output_dir, f"{stem}_noisy.wav")
+
+            if args.resume and os.path.exists(out_wav):
+                if i % 100 == 0 or i == len(chosen):
+                    print(f"  [{i}/{len(chosen)}] 已跳过现有结果")
+                continue
+
             noisy_wav = utils.load_audio(wav_path)
 
             with torch.no_grad():
                 clean_wav = denoise_waveform(model, noisy_wav, device)
             if args.postprocess:
                 clean_wav = postprocess(clean_wav, noisy_wav)
-
-            stem      = os.path.splitext(os.path.basename(wav_path))[0]
-            out_wav   = os.path.join(args.output_dir, f"{stem}_denoised.wav")
-            noisy_out = os.path.join(args.output_dir, f"{stem}_noisy.wav")
 
             utils.save_audio(clean_wav, out_wav)
             if args.save_noisy:

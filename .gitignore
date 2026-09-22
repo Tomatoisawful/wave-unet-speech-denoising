@@ -242,3 +242,6 @@ logs/full_utterances/baseline_smoke.*
 
 # Word 渲染检查产生的临时文件
 _qa_report/
+
+# 论文报告不保留生成脚本，避免重新加入仓库
+build_report.py

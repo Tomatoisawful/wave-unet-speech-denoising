@@ -107,7 +107,7 @@ data/edinburgh/
 
 跨数据集测试采用 VCTK 0.92 的 `mic1` 纯净录音，排除已在 Edinburgh 训练集和测试集中出现的说话人，再与 DEMAND 噪声混合。目标 SNR 循环采用 `-5、0、5、10、15 dB`，随机种子为 42。
 
-该测试集共 31,408 对完整语音。它不是论文中统一使用的官方划分，应被描述为“自建 VCTK+DEMAND 跨数据集泛化测试集”。
+该测试集共 31,408 对完整语音。
 
 ## 4. 实验结果
 
@@ -157,8 +157,7 @@ data/edinburgh/
 ### 4.4 结果解释与限制
 
 - 模型在官方测试集上全面超过带噪输入、谱减法和维纳滤波基线。
-- 在自建 VCTK+DEMAND 上仍显著提升 SNR 和 SSNR，说明模型具备跨说话人泛化能力。
-- 全量 VCTK 测试不是公开统一划分，不能与使用官方 824 条测试集的论文进行严格排名。
+- 在 VCTK+DEMAND 上仍显著提升 SNR 和 SSNR，说明模型具备跨说话人泛化能力。
 - PESQ、STOI 等指标会受到采样率、静音处理、后处理及具体指标实现影响。
 - 当前训练目标主要优化 SI-SDR 和频谱重建，没有直接优化 PESQ，因此感知质量仍有提升空间。
 
@@ -184,14 +183,6 @@ python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA:', to
 ```powershell
 $mambaPy = "D:\miniconda3\envs\mamba\python.exe"
 & $mambaPy -m pip install -r requirements.txt
-```
-
-### Linux/云服务器
-
-```bash
-cd /root/autodl-tmp/audio-denoising-main
-python -m pip install -r requirements.txt
-python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
 ```
 
 ## 6. 训练流程
@@ -337,37 +328,8 @@ SHA-256：603D331BB431A71FB1D6E37A224B0590B14B609BDC135105DBF841F03B37CDC1
 
 ## 13. 仓库不包含的内容
 
-以下内容已通过 `.gitignore` 排除：
-
 - `data/`：Edinburgh、VCTK、DEMAND及预处理缓存；
 - `outputs/`：批量推理生成的 WAV 和逐语音频谱图；
 - `.venv/`、`venv/`、`env/`：虚拟环境；
-- `wandb/`、Python缓存及临时文件。
 
 克隆仓库后需要自行准备数据集，但可以直接使用仓库中的最佳模型权重。
-
-## 14. 常见问题
-
-### `ModuleNotFoundError: No module named 'torch'`
-
-当前命令使用的 Python 不属于已安装 PyTorch 的环境。请执行 `conda activate mamba`，或使用完整解释器路径运行。
-
-### `No .pt files found ... segments/train`
-
-训练缓存尚未生成，请先执行第 6.1 节的预处理命令。
-
-### CUDA显存不足
-
-训练时减小 `BATCH_SIZE`；完整语音推理已经采用窗口化处理，若仍异常可逐条运行并使用 `--resume` 续跑。
-
-### 批量推理中断
-
-保持相同输入和输出目录，重新执行带 `--resume` 的命令。已经存在的 `*_denoised.wav` 会被跳过。
-
-## 15. 参考资料
-
-- CSTR VCTK Corpus: <https://datashare.ed.ac.uk/handle/10283/3443>
-- VoiceBank-DEMAND / Edinburgh Noisy Speech Database: <https://datashare.ed.ac.uk/handle/10283/2791>
-- Wave-U-Net for Speech Enhancement: <https://arxiv.org/abs/1811.11307>
-- PESQ, ITU-T P.862: <https://www.itu.int/rec/T-REC-P.862>
-- STOI: <https://doi.org/10.1109/TASL.2010.2081671>

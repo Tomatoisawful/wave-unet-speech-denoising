@@ -225,6 +225,7 @@ wandb/
 !checkpoints/
 checkpoints/*
 !checkpoints/best_wave_model.pt
+!checkpoints/best_wave_unilstm_attention_b128.pt
 
 # 保留完整语音正式评估日志；其他临时日志仍由上方 *.log 规则忽略
 !logs/
@@ -240,8 +241,19 @@ logs/full_utterances/baseline_smoke.*
 !logs/vctk_demand_all/evaluation.log
 !logs/vctk_demand_all/evaluation.csv
 
+# 保留已完成的 UniLSTM + 自注意力消融实验
+!logs/ablation_unilstm_attention_b128/
+!logs/ablation_unilstm_attention_b128/config_snapshot.py
+!logs/ablation_unilstm_attention_b128/train_snapshot.py
+!logs/ablation_unilstm_attention_b128/training.log
+!logs/ablation_unilstm_attention_b128/evaluation.log
+!logs/ablation_unilstm_attention_b128/evaluation.csv
+
 # Word 渲染检查产生的临时文件
 _qa_report/
 
 # 论文报告不保留生成脚本，避免重新加入仓库
 build_report.py
+
+# Microsoft Word 打开文档时生成的临时锁文件
+~$*.docx

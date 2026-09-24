@@ -1,7 +1,7 @@
 """
 train.py
 
-Wave-U-Net + BiLSTM + 自注意力模型的训练流程。
+Wave-U-Net 及其 LSTM/自注意力瓶颈消融模型的训练流程。
 
 主要流程：
   1. 从预处理的训练/验证 `.pt` 片段构建 DataLoader；
@@ -14,6 +14,7 @@ Run:
     python src/train.py
 """
 
+import argparse
 import os
 import math
 
@@ -71,8 +72,8 @@ def train_one_epoch(
     n_batches = 0
 
     for batch in loader:
-        noisy = batch["noisy"].to(device)   # (B, 1, samples)
-        clean = batch["clean"].to(device)   # (B, 1, samples)
+        noisy = batch["noisy"].to(device, non_blocking=True)   # (B, 1, samples)
+        clean = batch["clean"].to(device, non_blocking=True)   # (B, 1, samples)
 
         estimated_wav = model(noisy).squeeze(1)
         clean_wav = clean.squeeze(1)
@@ -83,7 +84,7 @@ def train_one_epoch(
         # 反向传播
         optimiser.zero_grad()
         loss.backward()
-        # 梯度裁剪，防止 LSTM 梯度爆炸
+        # 梯度裁剪，降低训练过程中梯度异常增大的风险
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
         optimiser.step()
 
@@ -110,8 +111,8 @@ def validate(
     n_batches = 0
 
     for batch in loader:
-        noisy = batch["noisy"].to(device)
-        clean = batch["clean"].to(device)
+        noisy = batch["noisy"].to(device, non_blocking=True)
+        clean = batch["clean"].to(device, non_blocking=True)
 
         estimated_wav = model(noisy).squeeze(1)
         clean_wav = clean.squeeze(1)
@@ -131,6 +132,7 @@ def save_checkpoint(model: WaveUNetDenoiser, epoch: int, val_si_sdr: float, path
         "epoch":       epoch,
         "model_state": model.state_dict(),
         "val_si_sdr":  val_si_sdr,
+        "model_config": model.model_config,
     }, path)
     print(f"Checkpoint saved -> {path}")
 
@@ -144,8 +146,25 @@ def load_checkpoint(model: WaveUNetDenoiser, path: str) -> tuple[int, float]:
     return ckpt["epoch"], ckpt["val_si_sdr"]
 
 
-def train() -> None:
+def train(
+    lstm_direction: str = "bidirectional",
+    checkpoint_name: str | None = None,
+    batch_size: int | None = None,
+    num_workers: int | None = None,
+    use_attention: bool = True,
+) -> None:
     utils.ensure_dirs()
+
+    if lstm_direction not in {"bidirectional", "unidirectional", "none"}:
+        raise ValueError(f"不支持的 LSTM 方向：{lstm_direction}")
+    use_lstm = lstm_direction != "none"
+    lstm_bidirectional = lstm_direction == "bidirectional"
+    if use_lstm and not use_attention:
+        raise ValueError("已决定不运行 LSTM-only 消融；--no-attention 只能与 --lstm-direction none 配合")
+    batch_size = config.BATCH_SIZE if batch_size is None else batch_size
+    num_workers = config.NUM_WORKERS if num_workers is None else num_workers
+    if batch_size <= 0 or num_workers < 0:
+        raise ValueError("batch_size 必须大于 0，num_workers 不能小于 0")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[train] Using device: {device}")
@@ -154,14 +173,33 @@ def train() -> None:
     _seg_root    = os.path.join(config.PROCESSED_DIR, "segments")
     train_ds     = PreprocessedDataset(os.path.join(_seg_root, "train"), augment=True,  max_files=config.MAX_TRAIN_FILES)
     val_ds       = PreprocessedDataset(os.path.join(_seg_root, "val"),   augment=False, max_files=config.MAX_VAL_FILES)
-    train_loader = DataLoader(train_ds, batch_size=config.BATCH_SIZE, shuffle=True,
-                              num_workers=0, pin_memory=True)
-    val_loader   = DataLoader(val_ds,   batch_size=config.BATCH_SIZE, shuffle=False,
-                              num_workers=0, pin_memory=True)
+    loader_options = {
+        "batch_size": batch_size,
+        "num_workers": num_workers,
+        "pin_memory": device.type == "cuda",
+    }
+    if num_workers > 0:
+        loader_options.update(persistent_workers=True, prefetch_factor=2)
+    train_loader = DataLoader(train_ds, shuffle=True, **loader_options)
+    val_loader = DataLoader(val_ds, shuffle=False, **loader_options)
 
     # 模型
-    model = WaveUNetDenoiser().to(device)
+    model = WaveUNetDenoiser(
+        use_lstm=use_lstm,
+        use_attention=use_attention,
+        lstm_bidirectional=lstm_bidirectional,
+    ).to(device)
     total_params = sum(p.numel() for p in model.parameters())
+    if not use_lstm and not use_attention:
+        bottleneck_name = "none (pure Wave-U-Net)"
+    else:
+        bottleneck_name = {
+            "bidirectional": "BiLSTM + self-attention",
+            "unidirectional": "UniLSTM + self-attention",
+            "none": "self-attention only (no LSTM)",
+        }[lstm_direction]
+    print(f"[train] Bottleneck: {bottleneck_name}")
+    print(f"[train] Batch size: {batch_size}; DataLoader workers: {num_workers}")
     print(f"[train] Model parameters: {total_params:,}")
 
     # 优化器与学习率调度
@@ -176,14 +214,25 @@ def train() -> None:
     # WANDB 实验跟踪
     if WANDB_AVAILABLE and config.WANDB_PROJECT:
         wandb.init(project=config.WANDB_PROJECT, entity=config.WANDB_ENTITY, config={
-            "lr": config.LEARNING_RATE, "batch_size": config.BATCH_SIZE,
+            "lr": config.LEARNING_RATE, "batch_size": batch_size,
             "epochs": config.MAX_EPOCHS, "lstm_hidden": config.LSTM_HIDDEN,
+            "lstm_direction": lstm_direction, "use_lstm": use_lstm,
+            "use_attention": use_attention, "num_workers": num_workers,
         })
 
     # 训练循环
     best_val_si_sdr  = float("-inf")
     patience_counter = 0
-    best_ckpt_path   = os.path.join(config.CHECKPOINT_DIR, "best_wave_model.pt")
+    if checkpoint_name is None:
+        if not use_lstm and not use_attention:
+            checkpoint_name = "best_wave_unet_only.pt"
+        else:
+            checkpoint_name = {
+                "bidirectional": "best_wave_model.pt",
+                "unidirectional": "best_wave_unilstm_attention.pt",
+                "none": "best_wave_attention_only.pt",
+            }[lstm_direction]
+    best_ckpt_path = os.path.join(config.CHECKPOINT_DIR, checkpoint_name)
 
     for epoch in range(config.MAX_EPOCHS):
         current_lr = optimiser.param_groups[0]["lr"]
@@ -231,4 +280,41 @@ def train() -> None:
 
 
 if __name__ == "__main__":
-    train()
+    parser = argparse.ArgumentParser(description="训练 Wave-U-Net 语音去噪模型")
+    parser.add_argument(
+        "--lstm-direction",
+        choices=("bidirectional", "unidirectional", "none"),
+        default="bidirectional",
+        help="瓶颈 LSTM 的方向；none 表示移除 LSTM，仅保留自注意力",
+    )
+    parser.add_argument(
+        "--checkpoint-name",
+        default=None,
+        help="最佳权重文件名；不指定时根据瓶颈类型自动命名",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=None,
+        help="批大小；不指定时使用 config.py 中的 BATCH_SIZE",
+    )
+    parser.add_argument(
+        "--num-workers",
+        type=int,
+        default=None,
+        help="DataLoader 子进程数；不指定时使用 config.py 中的 NUM_WORKERS",
+    )
+    parser.add_argument(
+        "--attention",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="是否使用自注意力；纯 Wave-U-Net 使用 --lstm-direction none --no-attention",
+    )
+    arguments = parser.parse_args()
+    train(
+        arguments.lstm_direction,
+        arguments.checkpoint_name,
+        arguments.batch_size,
+        arguments.num_workers,
+        arguments.attention,
+    )

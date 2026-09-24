@@ -92,6 +92,9 @@ ENCODER_CHANNELS = [32, 64, 128, 256, 512]    # 为旧频谱模型保留的兼�
 WAVE_ENCODER_CHANNELS = [32, 64, 128, 256, 512]
 LSTM_HIDDEN      = 256                        # 双向各 256 维，共 512 个瓶颈通道
 LSTM_LAYERS      = 2                          # 堆叠的 BiLSTM 层数
+USE_LSTM         = True                      # False 用于 Wave-U-Net + 自注意力消融实验
+LSTM_BIDIRECTIONAL = True                     # False 用于单向 LSTM + 注意力消融实验
+USE_ATTENTION    = True                      # False 与 USE_LSTM=False 组合为纯 Wave-U-Net
 ATTENTION_HEADS  = 8
 ATTENTION_DROPOUT = 0.1
 
@@ -101,6 +104,7 @@ ATTENTION_DROPOUT = 0.1
 #----------------------------------------------------------------------------------
 
 BATCH_SIZE    = 8       # 波形模型占用显存较多
+NUM_WORKERS   = 0       # DataLoader 子进程数；服务器训练时可通过命令行覆盖
 MAX_EPOCHS    = 100
 LEARNING_RATE = 1e-3
 WEIGHT_DECAY  = 1e-4

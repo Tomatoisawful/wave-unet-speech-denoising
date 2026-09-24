@@ -1,4 +1,4 @@
-"""结合 BiLSTM 与自注意力机制的 Wave-U-Net 语音增强模型。"""
+"""支持完整模型及瓶颈模块消融的 Wave-U-Net 语音增强模型。"""
 
 import torch
 import torch.nn as nn
@@ -54,14 +54,29 @@ class DecoderBlock1D(nn.Module):
         return self.fuse(torch.cat([self.up(x), skip], dim=1))
 
 
-class BiLSTMAttentionBottleneck(nn.Module):
-    def __init__(self, channels: int, hidden: int, layers: int, heads: int, dropout: float):
+class LSTMAttentionBottleneck(nn.Module):
+    """可切换双向或单向 LSTM 的注意力瓶颈。"""
+
+    def __init__(
+        self,
+        channels: int,
+        hidden: int,
+        layers: int,
+        heads: int,
+        dropout: float,
+        bidirectional: bool = True,
+    ):
         super().__init__()
-        if 2 * hidden != channels:
-            raise ValueError("LSTM 隐藏层维度的两倍必须等于瓶颈层通道数")
+        directions = 2 if bidirectional else 1
+        self.bidirectional = bidirectional
         self.lstm = nn.LSTM(
             channels, hidden, num_layers=layers, batch_first=True,
-            bidirectional=True, dropout=dropout if layers > 1 else 0.0,
+            bidirectional=bidirectional, dropout=dropout if layers > 1 else 0.0,
+        )
+        lstm_output = directions * hidden
+        self.output_projection = (
+            nn.Identity() if lstm_output == channels
+            else nn.Linear(lstm_output, channels)
         )
         self.norm1 = nn.LayerNorm(channels)
         self.attention = nn.MultiheadAttention(
@@ -76,6 +91,31 @@ class BiLSTMAttentionBottleneck(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         seq = x.transpose(1, 2)
         seq, _ = self.lstm(seq)
+        seq = self.output_projection(seq)
+        seq = self.norm1(seq)
+        attn, _ = self.attention(seq, seq, seq, need_weights=False)
+        seq = self.norm2(seq + attn)
+        seq = seq + self.ffn(seq)
+        return seq.transpose(1, 2)
+
+
+class AttentionBottleneck(nn.Module):
+    """不含循环网络的纯自注意力瓶颈，用于消融实验。"""
+
+    def __init__(self, channels: int, heads: int, dropout: float):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(channels)
+        self.attention = nn.MultiheadAttention(
+            channels, heads, dropout=dropout, batch_first=True,
+        )
+        self.norm2 = nn.LayerNorm(channels)
+        self.ffn = nn.Sequential(
+            nn.Linear(channels, channels * 2), nn.GELU(),
+            nn.Dropout(dropout), nn.Linear(channels * 2, channels),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        seq = x.transpose(1, 2)
         seq = self.norm1(seq)
         attn, _ = self.attention(seq, seq, seq, need_weights=False)
         seq = self.norm2(seq + attn)
@@ -89,8 +129,11 @@ class WaveUNetDenoiser(nn.Module):
     def __init__(
         self,
         encoder_channels: list[int] = config.WAVE_ENCODER_CHANNELS,
-        lstm_hidden: int = config.LSTM_HIDDEN,
+        lstm_hidden: int | None = None,
         lstm_layers: int = config.LSTM_LAYERS,
+        use_lstm: bool = config.USE_LSTM,
+        lstm_bidirectional: bool = config.LSTM_BIDIRECTIONAL,
+        use_attention: bool = config.USE_ATTENTION,
         attention_heads: int = config.ATTENTION_HEADS,
         attention_dropout: float = config.ATTENTION_DROPOUT,
     ):
@@ -100,10 +143,32 @@ class WaveUNetDenoiser(nn.Module):
             EncoderBlock1D(channels[i], channels[i + 1])
             for i in range(len(encoder_channels))
         ])
-        self.bottleneck = BiLSTMAttentionBottleneck(
-            encoder_channels[-1], lstm_hidden, lstm_layers,
-            attention_heads, attention_dropout,
-        )
+        if lstm_hidden is None:
+            # 双向与单向实验均使用 256 维隐藏状态。单向输出通过线性层投影
+            # 到 512 维，使注意力层和解码器保持不变。
+            lstm_hidden = config.LSTM_HIDDEN
+        self.use_lstm = use_lstm
+        self.use_attention = use_attention
+        self.lstm_bidirectional = lstm_bidirectional
+        self.model_config = {
+            "use_lstm": use_lstm,
+            "use_attention": use_attention,
+            "lstm_bidirectional": lstm_bidirectional,
+        }
+        if use_lstm and not use_attention:
+            raise ValueError("当前实验方案不包含 LSTM-only 结构；请启用注意力或同时移除 LSTM")
+        if use_lstm:
+            self.bottleneck = LSTMAttentionBottleneck(
+                encoder_channels[-1], lstm_hidden, lstm_layers,
+                attention_heads, attention_dropout, lstm_bidirectional,
+            )
+        elif use_attention:
+            self.bottleneck = AttentionBottleneck(
+                encoder_channels[-1], attention_heads, attention_dropout,
+            )
+        else:
+            # 纯 Wave-U-Net：编码器输出直接送入解码器。
+            self.bottleneck = nn.Identity()
 
         # 每次下采样前保存编码器跳跃连接，其通道数为
         # [1, 32, 64, 128, 256]，解码时按相反顺序使用。
@@ -140,6 +205,7 @@ class WaveUNetDenoiser(nn.Module):
 
 # 保留旧导入名称，兼容已有调用代码。
 UNetDenoiser = WaveUNetDenoiser
+BiLSTMAttentionBottleneck = LSTMAttentionBottleneck
 
 
 if __name__ == "__main__":

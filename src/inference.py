@@ -25,11 +25,20 @@ import librosa.display
 import config
 import utils
 from wave_model import WaveUNetDenoiser
-from train    import load_checkpoint
 from evaluate import denoise_waveform
 
 
 FULL_UTTERANCE_OUTPUT_DIR = os.path.join(config.OUTPUT_DIR, "full_utterances")
+
+
+def load_denoising_model(checkpoint_path: str, device: torch.device):
+    """根据检查点中保存的结构配置创建并加载模型。"""
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    model_config = checkpoint.get("model_config", {})
+    model = WaveUNetDenoiser(**model_config).to(device)
+    model.load_state_dict(checkpoint["model_state"])
+    model.eval()
+    return model, checkpoint["epoch"], checkpoint.get("val_si_sdr", float("nan"))
 
 
 def plot_spectrograms(
@@ -142,9 +151,7 @@ def run_inference(
     print(f"[inference] Device: {device}")
 
     # 加载模型
-    model = WaveUNetDenoiser().to(device)
-    epoch, _ = load_checkpoint(model, checkpoint_path)
-    model.eval()
+    model, epoch, _ = load_denoising_model(checkpoint_path, device)
     print(f"[inference] Loaded model from epoch {epoch}")
 
     # 加载音频
@@ -231,9 +238,7 @@ if __name__ == "__main__":
 
         # 仅加载一次模型，供全部文件复用
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = WaveUNetDenoiser().to(device)
-        epoch, _ = load_checkpoint(model, args.checkpoint)
-        model.eval()
+        model, epoch, _ = load_denoising_model(args.checkpoint, device)
         print(f"[inference] Loaded model from epoch {epoch}")
 
         os.makedirs(args.output_dir, exist_ok=True)

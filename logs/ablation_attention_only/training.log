@@ -1,0 +1,408 @@
+[train] Using device: cuda
+[PreprocessedDataset] 24720 segments in /root/autodl-tmp/audio-denoising-main/src/../data/processed_wave/segments/train
+[PreprocessedDataset] 7648 segments in /root/autodl-tmp/audio-denoising-main/src/../data/processed_wave/segments/val
+[train] Bottleneck: self-attention only (no LSTM)
+[train] Batch size: 128; DataLoader workers: 8
+[train] Model parameters: 14,760,337
+
+Epoch 1/100  (lr=3.33e-04)
+  train loss=-9.2932 | val loss=-9.1278 | val SI-SDR=9.33 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 2/100  (lr=6.67e-04)
+  train loss=-10.1316 | val loss=-9.5854 | val SI-SDR=9.78 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 3/100  (lr=1.00e-03)
+  train loss=-10.1988 | val loss=-10.2324 | val SI-SDR=10.42 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 4/100  (lr=1.00e-03)
+  train loss=-10.5632 | val loss=-10.2055 | val SI-SDR=10.39 dB
+无提升（1/15）
+
+Epoch 5/100  (lr=1.00e-03)
+  train loss=-10.7507 | val loss=-10.5596 | val SI-SDR=10.74 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 6/100  (lr=9.99e-04)
+  train loss=-11.1530 | val loss=-10.8205 | val SI-SDR=11.00 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 7/100  (lr=9.98e-04)
+  train loss=-11.2161 | val loss=-11.0119 | val SI-SDR=11.19 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 8/100  (lr=9.96e-04)
+  train loss=-11.3788 | val loss=-10.8770 | val SI-SDR=11.06 dB
+无提升（1/15）
+
+Epoch 9/100  (lr=9.94e-04)
+  train loss=-11.1449 | val loss=-10.6647 | val SI-SDR=10.85 dB
+无提升（2/15）
+
+Epoch 10/100  (lr=9.91e-04)
+  train loss=-11.6406 | val loss=-11.1089 | val SI-SDR=11.29 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 11/100  (lr=9.87e-04)
+  train loss=-11.8808 | val loss=-11.2580 | val SI-SDR=11.44 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 12/100  (lr=9.83e-04)
+  train loss=-11.6544 | val loss=-11.2375 | val SI-SDR=11.42 dB
+无提升（1/15）
+
+Epoch 13/100  (lr=9.79e-04)
+  train loss=-11.8052 | val loss=-11.5538 | val SI-SDR=11.73 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 14/100  (lr=9.74e-04)
+  train loss=-11.8047 | val loss=-12.0282 | val SI-SDR=12.20 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 15/100  (lr=9.69e-04)
+  train loss=-11.8685 | val loss=-10.5480 | val SI-SDR=10.73 dB
+无提升（1/15）
+
+Epoch 16/100  (lr=9.63e-04)
+  train loss=-11.8571 | val loss=-12.0908 | val SI-SDR=12.27 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 17/100  (lr=9.57e-04)
+  train loss=-12.3012 | val loss=-12.0238 | val SI-SDR=12.20 dB
+无提升（1/15）
+
+Epoch 18/100  (lr=9.50e-04)
+  train loss=-12.2926 | val loss=-10.8786 | val SI-SDR=11.07 dB
+无提升（2/15）
+
+Epoch 19/100  (lr=9.43e-04)
+  train loss=-12.3472 | val loss=-12.1470 | val SI-SDR=12.32 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 20/100  (lr=9.35e-04)
+  train loss=-12.3856 | val loss=-11.7908 | val SI-SDR=11.96 dB
+无提升（1/15）
+
+Epoch 21/100  (lr=9.27e-04)
+  train loss=-12.4014 | val loss=-12.1535 | val SI-SDR=12.32 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 22/100  (lr=9.18e-04)
+  train loss=-12.5115 | val loss=-12.0496 | val SI-SDR=12.22 dB
+无提升（1/15）
+
+Epoch 23/100  (lr=9.09e-04)
+  train loss=-12.4823 | val loss=-12.1871 | val SI-SDR=12.36 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 24/100  (lr=9.00e-04)
+  train loss=-12.6304 | val loss=-12.5268 | val SI-SDR=12.70 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 25/100  (lr=8.90e-04)
+  train loss=-12.7610 | val loss=-12.1353 | val SI-SDR=12.31 dB
+无提升（1/15）
+
+Epoch 26/100  (lr=8.80e-04)
+  train loss=-12.4330 | val loss=-12.1433 | val SI-SDR=12.32 dB
+无提升（2/15）
+
+Epoch 27/100  (lr=8.69e-04)
+  train loss=-12.5478 | val loss=-11.9117 | val SI-SDR=12.09 dB
+无提升（3/15）
+
+Epoch 28/100  (lr=8.58e-04)
+  train loss=-12.7806 | val loss=-12.2270 | val SI-SDR=12.40 dB
+无提升（4/15）
+
+Epoch 29/100  (lr=8.46e-04)
+  train loss=-12.9217 | val loss=-12.5165 | val SI-SDR=12.69 dB
+无提升（5/15）
+
+Epoch 30/100  (lr=8.35e-04)
+  train loss=-13.0479 | val loss=-12.6587 | val SI-SDR=12.83 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 31/100  (lr=8.22e-04)
+  train loss=-12.8198 | val loss=-12.4515 | val SI-SDR=12.62 dB
+无提升（1/15）
+
+Epoch 32/100  (lr=8.10e-04)
+  train loss=-12.7863 | val loss=-12.4296 | val SI-SDR=12.60 dB
+无提升（2/15）
+
+Epoch 33/100  (lr=7.97e-04)
+  train loss=-13.0451 | val loss=-12.8690 | val SI-SDR=13.04 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 34/100  (lr=7.84e-04)
+  train loss=-13.0254 | val loss=-12.9338 | val SI-SDR=13.10 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 35/100  (lr=7.71e-04)
+  train loss=-13.2644 | val loss=-12.4112 | val SI-SDR=12.58 dB
+无提升（1/15）
+
+Epoch 36/100  (lr=7.57e-04)
+  train loss=-13.1479 | val loss=-12.8550 | val SI-SDR=13.03 dB
+无提升（2/15）
+
+Epoch 37/100  (lr=7.43e-04)
+  train loss=-13.0215 | val loss=-12.2732 | val SI-SDR=12.44 dB
+无提升（3/15）
+
+Epoch 38/100  (lr=7.29e-04)
+  train loss=-13.3065 | val loss=-12.7776 | val SI-SDR=12.95 dB
+无提升（4/15）
+
+Epoch 39/100  (lr=7.15e-04)
+  train loss=-13.3453 | val loss=-13.0416 | val SI-SDR=13.21 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 40/100  (lr=7.00e-04)
+  train loss=-13.3336 | val loss=-12.8637 | val SI-SDR=13.03 dB
+无提升（1/15）
+
+Epoch 41/100  (lr=6.85e-04)
+  train loss=-13.4499 | val loss=-13.1894 | val SI-SDR=13.36 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 42/100  (lr=6.70e-04)
+  train loss=-13.4058 | val loss=-12.9620 | val SI-SDR=13.13 dB
+无提升（1/15）
+
+Epoch 43/100  (lr=6.55e-04)
+  train loss=-13.4819 | val loss=-13.1767 | val SI-SDR=13.34 dB
+无提升（2/15）
+
+Epoch 44/100  (lr=6.40e-04)
+  train loss=-13.3637 | val loss=-12.9104 | val SI-SDR=13.08 dB
+无提升（3/15）
+
+Epoch 45/100  (lr=6.24e-04)
+  train loss=-13.4623 | val loss=-13.0081 | val SI-SDR=13.17 dB
+无提升（4/15）
+
+Epoch 46/100  (lr=6.08e-04)
+  train loss=-13.5545 | val loss=-13.1571 | val SI-SDR=13.32 dB
+无提升（5/15）
+
+Epoch 47/100  (lr=5.93e-04)
+  train loss=-13.5307 | val loss=-13.1187 | val SI-SDR=13.28 dB
+无提升（6/15）
+
+Epoch 48/100  (lr=5.77e-04)
+  train loss=-13.5562 | val loss=-13.1069 | val SI-SDR=13.27 dB
+无提升（7/15）
+
+Epoch 49/100  (lr=5.61e-04)
+  train loss=-13.6005 | val loss=-13.0372 | val SI-SDR=13.20 dB
+无提升（8/15）
+
+Epoch 50/100  (lr=5.45e-04)
+  train loss=-13.6595 | val loss=-13.2558 | val SI-SDR=13.42 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 51/100  (lr=5.29e-04)
+  train loss=-13.7377 | val loss=-13.3237 | val SI-SDR=13.49 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 52/100  (lr=5.13e-04)
+  train loss=-13.8409 | val loss=-13.3201 | val SI-SDR=13.49 dB
+无提升（1/15）
+
+Epoch 53/100  (lr=4.97e-04)
+  train loss=-13.8198 | val loss=-13.3431 | val SI-SDR=13.51 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 54/100  (lr=4.81e-04)
+  train loss=-13.8709 | val loss=-13.3486 | val SI-SDR=13.51 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 55/100  (lr=4.65e-04)
+  train loss=-13.9181 | val loss=-13.3047 | val SI-SDR=13.47 dB
+无提升（1/15）
+
+Epoch 56/100  (lr=4.49e-04)
+  train loss=-13.9446 | val loss=-13.5065 | val SI-SDR=13.67 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 57/100  (lr=4.33e-04)
+  train loss=-14.0306 | val loss=-13.0805 | val SI-SDR=13.24 dB
+无提升（1/15）
+
+Epoch 58/100  (lr=4.17e-04)
+  train loss=-14.0414 | val loss=-13.4314 | val SI-SDR=13.60 dB
+无提升（2/15）
+
+Epoch 59/100  (lr=4.02e-04)
+  train loss=-14.0017 | val loss=-13.4663 | val SI-SDR=13.63 dB
+无提升（3/15）
+
+Epoch 60/100  (lr=3.86e-04)
+  train loss=-14.0709 | val loss=-13.6021 | val SI-SDR=13.77 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 61/100  (lr=3.70e-04)
+  train loss=-14.1178 | val loss=-13.4192 | val SI-SDR=13.58 dB
+无提升（1/15）
+
+Epoch 62/100  (lr=3.55e-04)
+  train loss=-14.2054 | val loss=-13.5279 | val SI-SDR=13.69 dB
+无提升（2/15）
+
+Epoch 63/100  (lr=3.40e-04)
+  train loss=-14.1957 | val loss=-13.6440 | val SI-SDR=13.81 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 64/100  (lr=3.25e-04)
+  train loss=-14.2094 | val loss=-13.6740 | val SI-SDR=13.84 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 65/100  (lr=3.10e-04)
+  train loss=-14.2647 | val loss=-13.6998 | val SI-SDR=13.86 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 66/100  (lr=2.95e-04)
+  train loss=-14.2662 | val loss=-13.6795 | val SI-SDR=13.85 dB
+无提升（1/15）
+
+Epoch 67/100  (lr=2.81e-04)
+  train loss=-14.3043 | val loss=-13.5552 | val SI-SDR=13.72 dB
+无提升（2/15）
+
+Epoch 68/100  (lr=2.67e-04)
+  train loss=-14.3294 | val loss=-13.6578 | val SI-SDR=13.82 dB
+无提升（3/15）
+
+Epoch 69/100  (lr=2.53e-04)
+  train loss=-14.3151 | val loss=-13.6953 | val SI-SDR=13.86 dB
+无提升（4/15）
+
+Epoch 70/100  (lr=2.39e-04)
+  train loss=-14.3650 | val loss=-13.7281 | val SI-SDR=13.89 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 71/100  (lr=2.26e-04)
+  train loss=-14.4063 | val loss=-13.7039 | val SI-SDR=13.87 dB
+无提升（1/15）
+
+Epoch 72/100  (lr=2.13e-04)
+  train loss=-14.4518 | val loss=-13.7630 | val SI-SDR=13.93 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 73/100  (lr=2.00e-04)
+  train loss=-14.4461 | val loss=-13.6899 | val SI-SDR=13.86 dB
+无提升（1/15）
+
+Epoch 74/100  (lr=1.88e-04)
+  train loss=-14.4417 | val loss=-13.8088 | val SI-SDR=13.98 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 75/100  (lr=1.75e-04)
+  train loss=-14.4874 | val loss=-13.8180 | val SI-SDR=13.99 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 76/100  (lr=1.64e-04)
+  train loss=-14.4999 | val loss=-13.8321 | val SI-SDR=14.00 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 77/100  (lr=1.52e-04)
+  train loss=-14.5382 | val loss=-13.8652 | val SI-SDR=14.04 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 78/100  (lr=1.41e-04)
+  train loss=-14.5696 | val loss=-13.8603 | val SI-SDR=14.04 dB
+无提升（1/15）
+
+Epoch 79/100  (lr=1.30e-04)
+  train loss=-14.5942 | val loss=-13.8683 | val SI-SDR=14.04 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 80/100  (lr=1.20e-04)
+  train loss=-14.6358 | val loss=-13.8792 | val SI-SDR=14.05 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 81/100  (lr=1.10e-04)
+  train loss=-14.6269 | val loss=-13.9001 | val SI-SDR=14.08 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 82/100  (lr=1.01e-04)
+  train loss=-14.6573 | val loss=-13.8780 | val SI-SDR=14.05 dB
+无提升（1/15）
+
+Epoch 83/100  (lr=9.18e-05)
+  train loss=-14.6748 | val loss=-13.9038 | val SI-SDR=14.08 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 84/100  (lr=8.32e-05)
+  train loss=-14.6782 | val loss=-13.9527 | val SI-SDR=14.13 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 85/100  (lr=7.50e-05)
+  train loss=-14.7154 | val loss=-13.9310 | val SI-SDR=14.11 dB
+无提升（1/15）
+
+Epoch 86/100  (lr=6.73e-05)
+  train loss=-14.7191 | val loss=-13.8920 | val SI-SDR=14.07 dB
+无提升（2/15）
+
+Epoch 87/100  (lr=6.00e-05)
+  train loss=-14.7422 | val loss=-13.9552 | val SI-SDR=14.13 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 88/100  (lr=5.32e-05)
+  train loss=-14.7255 | val loss=-13.9461 | val SI-SDR=14.12 dB
+无提升（1/15）
+
+Epoch 89/100  (lr=4.69e-05)
+  train loss=-14.7665 | val loss=-13.9558 | val SI-SDR=14.13 dB
+无提升（2/15）
+
+Epoch 90/100  (lr=4.11e-05)
+  train loss=-14.7846 | val loss=-13.9543 | val SI-SDR=14.13 dB
+无提升（3/15）
+
+Epoch 91/100  (lr=3.57e-05)
+  train loss=-14.7539 | val loss=-13.9666 | val SI-SDR=14.14 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 92/100  (lr=3.09e-05)
+  train loss=-14.7717 | val loss=-13.9786 | val SI-SDR=14.15 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 93/100  (lr=2.65e-05)
+  train loss=-14.7721 | val loss=-13.9551 | val SI-SDR=14.13 dB
+无提升（1/15）
+
+Epoch 94/100  (lr=2.27e-05)
+  train loss=-14.7493 | val loss=-13.9712 | val SI-SDR=14.14 dB
+无提升（2/15）
+
+Epoch 95/100  (lr=1.93e-05)
+  train loss=-14.7948 | val loss=-13.9538 | val SI-SDR=14.13 dB
+无提升（3/15）
+
+Epoch 96/100  (lr=1.65e-05)
+  train loss=-14.7707 | val loss=-13.9939 | val SI-SDR=14.17 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 97/100  (lr=1.41e-05)
+  train loss=-14.8108 | val loss=-13.9804 | val SI-SDR=14.15 dB
+无提升（1/15）
+
+Epoch 98/100  (lr=1.23e-05)
+  train loss=-14.8083 | val loss=-13.9656 | val SI-SDR=14.14 dB
+无提升（2/15）
+
+Epoch 99/100  (lr=1.10e-05)
+  train loss=-14.7865 | val loss=-13.9972 | val SI-SDR=14.17 dB
+Checkpoint saved -> /root/autodl-tmp/audio-denoising-main/src/../checkpoints/best_wave_attention_only_b128.pt
+
+Epoch 100/100  (lr=1.03e-05)
+  train loss=-14.8002 | val loss=-13.9834 | val SI-SDR=14.16 dB
+无提升（1/15）
+
+[train] 完成。最佳验证集 SI-SDR：14.17 dB

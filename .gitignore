@@ -221,11 +221,13 @@ outputs/
 checkpoints/
 wandb/
 
-# 保留最终 Wave-U-Net 模型权重（约 68 MB，低于 GitHub 100 MB 单文件限制）
+# 保留四组正式 Wave-U-Net 模型权重（均低于 GitHub 100 MB 单文件限制）
 !checkpoints/
 checkpoints/*
 !checkpoints/best_wave_model.pt
 !checkpoints/best_wave_unilstm_attention_b128.pt
+!checkpoints/best_wave_attention_only_b128.pt
+!checkpoints/best_wave_unet_only_b128.pt
 
 # 保留完整语音正式评估日志；其他临时日志仍由上方 *.log 规则忽略
 !logs/
@@ -248,6 +250,28 @@ logs/full_utterances/baseline_smoke.*
 !logs/ablation_unilstm_attention_b128/training.log
 !logs/ablation_unilstm_attention_b128/evaluation.log
 !logs/ablation_unilstm_attention_b128/evaluation.csv
+
+# 保留仅自注意力消融实验的正式日志、逐文件指标和代码快照
+!logs/ablation_attention_only/
+!logs/ablation_attention_only/config_snapshot.py
+!logs/ablation_attention_only/train_snapshot.py
+!logs/ablation_attention_only/wave_model_snapshot.py
+!logs/ablation_attention_only/training.log
+!logs/ablation_attention_only/inference.log
+!logs/ablation_attention_only/evaluation.log
+!logs/ablation_attention_only/evaluation_console.log
+!logs/ablation_attention_only/evaluation.csv
+
+# 保留纯 Wave-U-Net 消融实验的正式日志、逐文件指标和代码快照
+!logs/ablation_wave_unet_only/
+!logs/ablation_wave_unet_only/config_snapshot.py
+!logs/ablation_wave_unet_only/train_snapshot.py
+!logs/ablation_wave_unet_only/wave_model_snapshot.py
+!logs/ablation_wave_unet_only/training.log
+!logs/ablation_wave_unet_only/inference.log
+!logs/ablation_wave_unet_only/evaluation.log
+!logs/ablation_wave_unet_only/evaluation_console.log
+!logs/ablation_wave_unet_only/evaluation.csv
 
 # Word 渲染检查产生的临时文件
 _qa_report/
